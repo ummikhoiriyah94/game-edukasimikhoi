@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Kuis Tarik Tambang - Teknik Pergerakan Kamera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .rope-transition {
+            transition: left 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-slate-800 shadow-md py-4 px-6 text-center">
+        <h1 class="text-2xl font-bold tracking-wide text-amber-400">Tarik Tambang Kuis: Teknik Pergerakan Kamera</h1>
+        <p class="text-sm text-slate-400 mt-1">Jawab dengan benar untuk menarik tali ke arah timmu!</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 max-w-4xl flex-grow flex flex-col justify-center">
+
+        <!-- Tampilan Arena / Tarik Tambang -->
+        <div class="bg-slate-800 rounded-xl p-6 shadow-lg mb-8 relative overflow-hidden">
+            <div class="flex justify-between items-center mb-4 text-sm font-semibold">
+                <span class="text-blue-400">Tim Kiri</span>
+                <span class="text-slate-400">VS</span>
+                <span class="text-red-400">Tim Kanan</span>
+            </div>
+
+            <!-- Visualisasi Lapangan & Tali -->
+            <div class="relative h-16 bg-slate-900 rounded-lg flex items-center px-4 border border-slate-700">
+                <!-- Garis Tengah -->
+                <div class="absolute left-1/2 top-0 bottom-0 w-1 bg-yellow-500 opacity-50 transform -translate-x-1/2 z-0"></div>
+                
+                <!-- Bendera / Indikator Tengah Tali -->
+                <div id="ropeContainer" class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 rope-transition flex items-center">
+                    <div class="w-4 h-12 bg-yellow-400 rounded shadow-md border border-yellow-600"></div>
+                </div>
+
+                <!-- Tali Kiri & Kanan -->
+                <div class="w-full h-2 bg-amber-700 rounded relative z-0 flex">
+                    <div class="w-1/2 h-full border-r-2 border-dashed border-amber-900"></div>
+                    <div class="w-1/2 h-full"></div>
+                </div>
+            </div>
+            <div class="text-center mt-2 text-xs text-slate-400" id="statusPosisi">Posisi Tali: Seimbang di Tengah</div>
+        </div>
+
+        <!-- Area Pertanyaan & Game -->
+        <div id="gameArea" class="bg-slate-800 rounded-xl p-6 shadow-lg">
+            <div id="setupScreen" class="text-center py-8">
+                <h2 class="text-xl font-bold mb-4">Siap untuk Memulai Pertandingan?</h2>
+                <p class="text-slate-300 mb-6 max-w-lg mx-auto">Soal akan diberikan secara bergantian antara Tim Kiri dan Tim Kanan mengenai materi <strong>Teknik Pergerakan Kamera</strong>.</p>
+                <button onclick="mulaiGame()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 py-3 rounded-lg shadow transition transform hover:scale-105">Mulai Game</button>
+            </div>
+
+            <div id="questionScreen" class="hidden">
+                <div class="flex justify-between items-center mb-6 bg-slate-900 p-3 rounded-lg">
+                    <div>
+                        <span id="activeTeamLabel" class="text-lg font-bold px-3 py-1 rounded text-white bg-blue-600">Giliran: Tim Kiri</span>
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        Soal ke-<span id="currentQuestionNum">1</span> dari 10 (per tim)
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 id="questionText" class="text-lg font-medium text-slate-100 mb-4">Pertanyaan akan muncul di sini...</h3>
+                    <div id="optionsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Pilihan Ganda Akan Dimasukkan Disini -->
+                    </div>
+                </div>
+
+                <div id="feedbackArea" class="hidden p-4 rounded-lg text-center font-medium mb-4"></div>
+            </div>
+
+            <div id="endScreen" class="hidden text-center py-8">
+                <h2 id="winnerText" class="text-3xl font-extrabold mb-4 text-amber-400">Pertandingan Selesai!</h2>
+                <p id="winnerDesc" class="text-slate-300 mb-6">Terima kasih telah bermain.</p>
+                <button onclick="resetGame()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 py-3 rounded-lg shadow transition">Main Lagi</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-center py-3 text-xs text-slate-500 border-t border-slate-700">
+        Game Kuis Edukatif &bull; Teknik Pergerakan Kamera
+    </footer>
+
+    <!-- Script Logika Game -->
+    <script>
+        // Bank Soal 10 untuk Tim Kiri dan 10 untuk Tim Kanan (Topik Setara: Teknik Pergerakan Kamera)
+        const soalTimKiri = [
+            {
+                pertanyaan: "Gerakan kamera di atas tripod yang berputar secara horizontal ke arah kiri atau kanan disebut...",
+                pilihan: ["Pan (Panning)", "Tilt", "Zoom", "Tracking"],
+                jawaban: 0
+            },
+            {
+                pertanyaan: "Teknik pergerakan kamera secara vertikal (mendongak ke atas atau menunduk ke bawah) dari posisi tetap disebut...",
+                pilihan: ["Pan", "Tilt", "Dolly", "Crane Shot"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Pergerakan seluruh kamera mendekati atau menjauhi objek menggunakan roda/rel disebut...",
+                pilihan: ["Pan & Tilt", "Zooming", "Dolly / Tracking", "Arc Shot"],
+                jawaban: 2
+            },
+            {
+                pertanyaan: "Perbedaan utama antara Dolly In/Out dan Zoom In/Out adalah...",
+                pilihan: ["Lensa kamera bergerak fisik vs lensa optik mengubah focal length", "Dolly hanya untuk video hitam putih", "Zoom tidak bisa dilakukan di luar ruangan", "Dolly selalu menggunakan helikopter"],
+                jawaban: 0
+            },
+            {
+                pertanyaan: "Gerakan kamera yang berputar melingkari (circular) mengelilingi objek disebut...",
+                pilihan: ["Pan", "Pedestal", "Arc Shot", "Roll"],
+                jawaban: 2
+            },
+            {
+                pertanyaan: "Teknik mengangkat atau menurunkan seluruh badan kamera secara vertikal tanpa mengubah sudut pandang disebut...",
+                pilihan: ["Tilt", "Pedestal (Boom)", "Pan", "Tracking"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Alat bantu berupa lengan panjang berbobot penyeimbang untuk mengambil gambar dari ketinggian ekstrem disebut...",
+                pilihan: ["Tripod", "Slider", "Crane / Jib", "Steadicam"],
+                jawaban: 2
+            },
+            {
+                pertanyaan: "Pergerakan kamera yang dibawa langsung oleh kamerawan dengan berjalan kaki, biasanya distabilkan dengan alat rompi khusus, dinamakan...",
+                pilihan: ["Static Shot", "Steadicam", "Zoom In", "Fixed Pan"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Efek visual di mana latar belakang tampak membesar atau menyusut saat kamera mendekat/menjauh sambil melakukan zoom berlawanan arah disebut...",
+                pilihan: ["Dolly Zoom (Vertigo Effect)", "Pan Shot", "Crash Zoom", "Tilt Down"],
+                jawaban: 0
+            },
+            {
+                pertanyaan: "Apa fungsi utama dari pergerakan kamera (camera movement) dalam sebuah adegan film?",
+                pilihan: ["Membuat penonton pusing", "Membangun dinamika, emosi, dan memperkuat narasi cerita", "Menghabiskan baterai kamera", "Mengurangi durasi editing"],
+                jawaban: 1
+            }
+        ];
+
+        const soalTimKanan = [
+            {
+                pertanyaan: "Saat kamera diletakkan di atas tripod dan digeser ke kanan atau ke kiri secara horizontal, gerakan ini dinamakan...",
+                pilihan: ["Tilt", "Panning", "Zoom", "Pedestal"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Gerakan kamera menaikkan atau menurunkan lensa kamera secara vertikal tanpa mengubah sudut (angle) disebut...",
+                pilihan: ["Tilt", "Pan", "Dolly", "Zoom"],
+                jawaban: 0
+            },
+            {
+                pertanyaan: "Jika kamera bergerak maju mendekati subjek atau mundur menjauhi subjek menggunakan rel atau roda, teknik tersebut adalah...",
+                pilihan: ["Zooming", "Tracking / Dolly", "Panning", "Crashing"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Perubahan ukuran objek yang diakibatkan oleh perubahan panjang fokus (focal length) pada lensa tanpa menggeser posisi fisik kamera disebut...",
+                pilihan: ["Dolly Shot", "Tracking", "Zoom In / Zoom Out", "Arc Shot"],
+                jawaban: 2
+            },
+            {
+                pertanyaan: "Gerakan kamera yang bergerak menyamping (mengikuti subjek yang berjalan dari kiri ke kanan atau sebaliknya) disebut...",
+                pilihan: ["Trucking / Crabbing", "Tilting", "Panning", "Zooming"],
+                jawaban: 0
+            },
+            {
+                pertanyaan: "Teknik pergerakan kamera memutar (roll) pada poros lensa (seperti memiringkan kepala ke bahu) sering digunakan untuk memberikan kesan...",
+                pilihan: ["Keseimbangan penuh", "Disorientasi, mabuk, atau dramatis", "Penerangan yang baik", "Warna yang lebih tajam"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Manakah alat yang paling tepat digunakan jika videografer ingin melakukan pergerakan maju-mundur yang sangat mulus di atas permukaan lantai rata?",
+                pilihan: ["Handheld bebas", "Dolly / Rel kereta kamera", "Tripod kayu statis", "Monopod tanpa roda"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Teknik pengambilan gambar dari udara yang dulunya menggunakan helikopter atau kini populer menggunakan drone disebut...",
+                pilihan: ["Aerial Shot", "Ground Level Shot", "Worm Eye Shot", "Macro Shot"],
+                jawaban: 0
+            },
+            {
+                pertanyaan: "Apa istilah untuk gerakan kamera yang sangat cepat untuk memberikan kejutan atau efek dramatis (misal: dari jauh langsung close-up)?",
+                pilihan: ["Slow Pan", "Crash Zoom (Snap Zoom)", "Smooth Tilt", "Static Dolly"],
+                jawaban: 1
+            },
+            {
+                pertanyaan: "Bagaimana cara kerja teknik Arc Shot dalam pergerakan kamera?",
+                pilihan: ["Kamera diam di satu sudut ruangan", "Kamera bergerak melingkar mengelilingi subjek yang menjadi fokus", "Kamera ditarik naik ke angkasa", "Kamera dijatuhkan bebas terkontrol"],
+                jawaban: 1
+            }
+        ];
+
+        let gameState = {
+            giliranTim: 'kiri', // 'kiri' atau 'kanan'
+            indexKiri: 0,
+            indexKanan: 0,
+            posisiTali: 0, // rentang dari -50 (kiri menang) sampai +50 (kanan menang), 0 = tengah
+            isAnswerLocked: false
+        };
+
+        function mulaiGame() {
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('questionScreen').classList.remove('hidden');
+            muatSoal();
+        }
+
+        function muatSoal() {
+            gameState.isAnswerLocked = false;
+            document.getElementById('feedbackArea').classList.add('hidden');
+            
+            let soalAktif;
+            let nomorSoal;
+            
+            if (gameState.giliranTim === 'kiri') {
+                if (gameState.indexKiri >= soalTimKiri.length) {
+                    cekPemenangAkhir();
+                    return;
+                }
+                soalAktif = soalTimKiri[gameState.indexKiri];
+                nomorSoal = gameState.indexKiri + 1;
+                
+                let label = document.getElementById('activeTeamLabel');
+                label.innerText = "Giliran: Tim Kiri";
+                label.className = "text-lg font-bold px-3 py-1 rounded text-white bg-blue-600";
+                document.getElementById('currentQuestionNum').innerText = nomorSoal;
+            } else {
+                if (gameState.indexKanan >= soalTimKanan.length) {
+                    cekPemenangAkhir();
+                    return;
+                }
+                soalAktif = soalTimKanan[gameState.indexKanan];
+                nomorSoal = gameState.indexKanan + 1;
+                
+                let label = document.getElementById('activeTeamLabel');
+                label.innerText = "Giliran: Tim Kanan";
+                label.className = "text-lg font-bold px-3 py-1 rounded text-white bg-red-600";
+                document.getElementById('currentQuestionNum').innerText = nomorSoal;
+            }
+
+            document.getElementById('questionText').innerText = soalAktif.pertanyaan;
+            
+            let optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+
+            soalAktif.pilihan.forEach((pilihan, index) => {
+                let btn = document.createElement('button');
+                btn.className = "bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium p-3 rounded-lg text-left transition border border-slate-600";
+                btn.innerText = `${String.fromCharCode(65 + index)}. ${pilihan}`;
+                btn.onclick = () => pilihJawaban(index, soalAktif.jawaban);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function pilihJawaban(pilihanUser, jawabanBenar) {
+            if (gameState.isAnswerLocked) return;
+            gameState.isAnswerLocked = true;
+
+            let feedbackArea = document.getElementById('feedbackArea');
+            feedbackArea.classList.remove('hidden');
+
+            let isBenar = (pilihanUser === jawabanBenar);
+            let tim = gameState.giliranTim;
+
+            if (isBenar) {
+                feedbackArea.className = "p-4 rounded-lg text-center font-medium mb-4 bg-green-900 text-green-200 border border-green-700";
+                feedbackArea.innerText = `Jawaban Benar! Tali tertarik ke arah ${tim === 'kiri' ? 'Tim Kiri' : 'Tim Kanan'}!`;
+                
+                // Geser tali
+                if (tim === 'kiri') {
+                    gameState.posisiTali -= 5; // Tarik ke kiri
+                } else {
+                    gameState.posisiTali += 5; // Tarik ke kanan
+                }
+            } else {
+                feedbackArea.className = "p-4 rounded-lg text-center font-medium mb-4 bg-red-900 text-red-200 border border-red-700";
+                feedbackArea.innerText = `Jawaban Salah! Tali terdorong ke arah lawan!`;
+                
+                // Salah berarti ditarik lawan (ke arah sebaliknya)
+                if (tim === 'kiri') {
+                    gameState.posisiTali += 5; // Terdorong ke kanan
+                } else {
+                    gameState.posisiTali -= 5; // Terdorong ke kiri
+                }
+            }
+
+            updateVisualTali();
+
+            // Increment index soal tim yang bersangkutan
+            if (tim === 'kiri') {
+                gameState.indexKiri++;
+                gameState.giliranTim = 'kanan';
+            } else {
+                gameState.indexKanan++;
+                gameState.giliranTim = 'kiri';
+            }
+
+            // Cek apakah posisi tali sudah mencapai batas menang instan
+            if (Math.abs(gameState.posisiTali) >= 40) {
+                setTimeout(cekPemenangAkhir, 1500);
+            } else {
+                // Lanjut ke giliran berikutnya setelah jeda singkat
+                setTimeout(muatSoal, 2000);
+            }
+        }
+
+        function updateVisualTali() {
+            let ropeContainer = document.getElementById('ropeContainer');
+            let statusPosisi = document.getElementById('statusPosisi');
+            
+            // Posisi persentase CSS (posisiTali berkisar dari -40 sampai +40)
+            // 50% adalah titik tengah
+            let offsetPersen = 50 + (gameState.posisiTali * 1.1);
+            ropeContainer.style.left = `${offsetPersen}%`;
+
+            if (gameState.posisiTali < 0) {
+                statusPosisi.innerText = `Posisi Tali: Lebih dekat ke Tim Kiri (${Math.abs(gameState.posisiTali)} poin)`;
+            } else if (gameState.posisiTali > 0) {
+                statusPosisi.innerText = `Posisi Tali: Lebih dekat ke Tim Kanan (${gameState.posisiTali} poin)`;
+            } else {
+                statusPosisi.innerText = "Posisi Tali: Seimbang di Tengah";
+            }
+        }
+
+        function cekPemenangAkhir() {
+            document.getElementById('questionScreen').classList.add('hidden');
+            document.getElementById('endScreen').classList.remove('hidden');
+
+            let winnerText = document.getElementById('winnerText');
+            let winnerDesc = document.getElementById('winnerDesc');
+
+            if (gameState.posisiTali < 0) {
+                winnerText.innerText = "🎉 TIM KIRI MENANG! 🎉";
+                winnerDesc.innerText = "Tim Kiri berhasil mendominasi tarikan tali berdasarkan ketepatan kuis kamera!";
+            } else if (gameState.posisiTali > 0) {
+                winnerText.innerText = "🎉 TIM KANAN MENANG! 🎉";
+                winnerDesc.innerText = "Tim Kanan berhasil mendominasi tarikan tali berdasarkan ketepatan kuis kamera!";
+            } else {
+                winnerText.innerText = "🤝 HASIL SERI! 🤝";
+                winnerDesc.innerText = "Pertandingan berakhir dengan kekuatan dan ketepatan yang seimbang!";
+            }
+        }
+
+        function resetGame() {
+            gameState = {
+                giliranTim: 'kiri',
+                indexKiri: 0,
+                indexKanan: 0,
+                posisiTali: 0,
+                isAnswerLocked: false
+            };
+            updateVisualTali();
+            document.getElementById('endScreen').classList.add('hidden');
+            document.getElementById('setupScreen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
